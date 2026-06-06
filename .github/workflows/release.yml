@@ -1,0 +1,38 @@
+# Etiket: vYYYY.M.P → GitHub Release (artefakt pipeline ileride eklenecek)
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: ver
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF_NAME}"
+            VER=$(node -p "require('./version.json').version")
+            EXP="v${VER}"
+            test "$TAG" = "$EXP" || { echo "Tag $TAG != expected $EXP"; exit 1; }
+            echo "title=Version ${VER}" >> "$GITHUB_OUTPUT"
+          else
+            VER=$(node -p "require('./version.json').version")
+            echo "title=Version ${VER} (manual)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.ver.outputs.title }}
+          generate_release_notes: true
